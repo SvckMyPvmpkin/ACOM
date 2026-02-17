@@ -28,6 +28,7 @@ class Fraction:
         return Fraction(self.num * other.den, self.den * other.num)
 
     def __abs__(self): return Fraction(abs(self.num), self.den)
+    def __neg__(self): return Fraction(-self.num, self.den)
     def __eq__(self, other):
         if not isinstance(other, Fraction): other = Fraction(other)
         return self.num == other.num and self.den == other.den
@@ -35,7 +36,8 @@ class Fraction:
         if not isinstance(other, Fraction): other = Fraction(other)
         return self.num * other.den < other.num * self.den
     def __repr__(self):
-        return str(self.num) if self.den == 1 else f"{self.num}/{self.den}"
+        if self.den == 1: return str(self.num)
+        return f"{self.num}/{self.den}"
 
 def print_matrix(matrix, message):
     print(f"\n>>> {message}")
@@ -45,7 +47,7 @@ def print_matrix(matrix, message):
 
 def load_matrix(filename):
     matrix = []
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         for line in f:
             if line.strip():
                 matrix.append([Fraction(int(x)) for x in line.split()])
@@ -53,15 +55,18 @@ def load_matrix(filename):
 
 def solve_jordan_gauss(matrix):
     rows = len(matrix)
-    cols = len(matrix[0]) - 1
+    cols = len(matrix[0]) - 1 
     
     print_matrix(matrix, "ИСХОДНАЯ МАТРИЦА")
 
+    basis_map = {}
     pivot_row = 0
-    for j in range(cols):
-        if pivot_row >= rows: break
 
-        print(f"\n=== РАБОТАЕМ СО СТОЛБЦОМ №{j+1} ===")
+    for j in range(cols):
+        if pivot_row >= rows:
+            break
+
+        print(f"\n=== АНАЛИЗИРУЕМ СТОЛБЕЦ x{j+1} ===")
 
         max_val = abs(matrix[pivot_row][j])
         max_idx = pivot_row
@@ -71,7 +76,7 @@ def solve_jordan_gauss(matrix):
                 max_idx = i
 
         if max_val == Fraction(0):
-            print(f"Столбец {j+1} содержит только нули ниже строки {pivot_row+1}. Пропускаем.")
+            print(f"Столбец x{j+1} не содержит ведущих элементов ниже строки {pivot_row+1}. Пропускаем (это будет свободная переменная).")
             continue
 
         if max_idx != pivot_row:
@@ -81,11 +86,9 @@ def solve_jordan_gauss(matrix):
 
         pivot_element = matrix[pivot_row][j]
         if pivot_element != Fraction(1):
-            print(f"ДЕЛЕНИЕ: Делим строку {pivot_row+1} на ведущий элемент {pivot_element}, чтобы получить 1")
+            print(f"ДЕЛЕНИЕ: Делим строку {pivot_row+1} на {pivot_element}, чтобы получить ведущую единицу")
             for k in range(j, cols + 1):
-                old_val = matrix[pivot_row][k]
-                matrix[pivot_row][k] = old_val / pivot_element
-                print(f"  R{pivot_row+1}[{k+1}]: {old_val} / {pivot_element} = {matrix[pivot_row][k]}")
+                matrix[pivot_row][k] = matrix[pivot_row][k] / pivot_element
             print_matrix(matrix, f"Матрица после нормализации строки {pivot_row+1}")
 
         for i in range(rows):
@@ -94,17 +97,15 @@ def solve_jordan_gauss(matrix):
                 if factor == Fraction(0):
                     continue
                 
-                print(f"ИСКЛЮЧЕНИЕ: Обнуляем элемент в строке {i+1}, используя коэффициент {factor}")
-                print(f"Формула: Строка({i+1}) = Строка({i+1}) - ({factor} * Строка({pivot_row+1}))")
+                print(f"ИСКЛЮЧЕНИЕ: Обнуляем x{j+1} в строке {i+1}")
+                print(f"Формула: R{i+1} = R{i+1} - ({factor} * R{pivot_row+1})")
                 
                 for k in range(j, cols + 1):
-                    old_val = matrix[i][k]
-                    subtrahend = factor * matrix[pivot_row][k] # То, что вычитаем
-                    matrix[i][k] = old_val - subtrahend
-                    print(f"  R{i+1}[{k+1}]: {old_val} - ({factor} * {matrix[pivot_row][k]}) = {matrix[i][k]}")
+                    matrix[i][k] = matrix[i][k] - factor * matrix[pivot_row][k]
                 
                 print_matrix(matrix, f"Результат после обработки строки {i+1}")
 
+        basis_map[j] = pivot_row
         pivot_row += 1
 
     for i in range(rows):
@@ -117,26 +118,48 @@ def solve_jordan_gauss(matrix):
             print(f"\nРЕЗУЛЬТАТ: Система не имеет решений (найдено противоречие 0 = {matrix[i][cols]})")
             return
 
-    determined_vars = 0
-    var_indices = []
-    for j in range(cols):
-        ones, zeros, pos = 0, 0, -1
-        for i in range(rows):
-            if matrix[i][j] == Fraction(1):
-                ones += 1
-                pos = i
-            elif matrix[i][j] == Fraction(0):
-                zeros += 1
-        if ones == 1 and (ones + zeros) == rows:
-            determined_vars += 1
-            var_indices.append((j, pos))
-
-    if determined_vars < cols:
+    free_vars = [j for j in range(cols) if j not in basis_map]
+    
+    if len(basis_map) < cols:
         print("\nРЕЗУЛЬТАТ: Система имеет бесконечно много решений.")
+        print("Общее решение (выраженное через свободные переменные):")
+        
+        for j in range(cols):
+            if j in basis_map:
+                r = basis_map[j]
+                constant = matrix[r][cols]
+                
+                parts = []
+                if constant != Fraction(0) or not any(matrix[r][fv] != Fraction(0) for fv in free_vars):
+                    parts.append(str(constant))
+                
+                for fv in free_vars:
+                    coeff = matrix[r][fv]
+                    if coeff == Fraction(0):
+                        continue
+                    
+                    move_coeff = -coeff
+                    
+                    if not parts:
+                        sign = "" if move_coeff.num > 0 else "-"
+                    else:
+                        sign = " + " if move_coeff.num > 0 else " - "
+                    
+                    abs_c = abs(move_coeff)
+                    c_str = "" if abs_c == Fraction(1) else str(abs_c)
+                    
+                    parts.append(f"{sign}{c_str}x{fv+1}")
+                
+                ans_str = "".join(parts).replace("+ -", "- ").strip()
+                print(f"x{j+1} = {ans_str}")
+            else:
+                print(f"x{j+1} — свободная переменная")
     else:
         print("\nРЕЗУЛЬТАТ: Единственное решение:")
-        for j, pos in sorted(var_indices):
-            print(f"x{j+1} = {matrix[pos][cols]}")
+        sorted_indices = sorted(basis_map.keys())
+        for j in sorted_indices:
+            r = basis_map[j]
+            print(f"x{j+1} = {matrix[r][cols]}")
 
 if __name__ == "__main__":
     try:
@@ -144,3 +167,5 @@ if __name__ == "__main__":
         solve_jordan_gauss(data)
     except FileNotFoundError:
         print("Создайте файл input.txt!")
+    except Exception as e:
+        print(f"Произошла ошибка: {e}")
