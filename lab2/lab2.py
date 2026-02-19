@@ -52,22 +52,16 @@ def load_matrix(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         for line in f:
             if line.strip():
-                # Поддержка отрицательных чисел и базовый парсинг
                 row = line.replace('-', ' -').split()
                 matrix.append([Fraction(int(x)) for x in row])
     return matrix
 
 def get_basic_solution(original_matrix, basis_indices):
-    """
-    Пытается найти базисное решение для выбранных индексов столбцов.
-    """
     matrix = copy.deepcopy(original_matrix)
     rows = len(matrix)
     cols = len(matrix[0]) - 1
     
-    # Порядок столбцов в базисе
     for step, col_idx in enumerate(basis_indices):
-        # Поиск ведущего элемента в текущем столбце col_idx (среди строк от step до конца)
         pivot_row = -1
         for r in range(step, rows):
             if matrix[r][col_idx] != Fraction(0):
@@ -75,19 +69,16 @@ def get_basic_solution(original_matrix, basis_indices):
                 break
         
         if pivot_row == -1:
-            return None # Эти столбцы линейно зависимы, базиса нет
+            return None
 
-        # Перестановка строк
         matrix[step], matrix[pivot_row] = matrix[pivot_row], matrix[step]
         
-        # Нормализация строки
         pivot_val = matrix[step][col_idx]
         for c in range(len(matrix[0])):
             matrix[step][c] = matrix[step][c] / pivot_val
         
         print_matrix(matrix, f"Шаг {step+1}: Выбран базисный x{col_idx+1}, нормализация строки {step+1}")
 
-        # Исключение остальных элементов в столбце
         for r in range(rows):
             if r != step:
                 factor = matrix[r][col_idx]
@@ -97,12 +88,10 @@ def get_basic_solution(original_matrix, basis_indices):
         
         print_matrix(matrix, f"Результат исключения для столбца x{col_idx+1}")
 
-    # Проверка на совместность (если строк больше, чем базисных переменных)
     for r in range(len(basis_indices), rows):
         if matrix[r][cols] != Fraction(0):
-            return None # Система несовместна
+            return None 
 
-    # Формируем решение
     solution = [Fraction(0)] * cols
     for i, col_idx in enumerate(basis_indices):
         solution[col_idx] = matrix[i][cols]
@@ -111,13 +100,10 @@ def get_basic_solution(original_matrix, basis_indices):
 
 def solve_all_bases(matrix):
     rows = len(matrix)
-    cols = len(matrix[0]) - 1 # количество переменных
+    cols = len(matrix[0]) - 1
     
     print_matrix(matrix, "ИСХОДНАЯ МАТРИЦА")
     
-    # Генерируем все комбинации индексов столбцов по m (кол-во уравнений)
-    # Если уравнений больше чем ранг, нужно сначала найти ранг. 
-    # Но для учебных задач обычно m - это размер базиса.
     all_combinations = list(combinations(range(cols), rows))
     
     solutions_found = 0
@@ -140,14 +126,7 @@ def solve_all_bases(matrix):
 
     print(f"\nИТОГО найдено базисных решений: {solutions_found}")
 
-if __name__ == "__main__":
-    # Создайте файл input.txt с коэффициентами системы
-    # Пример для системы №1:
-    # 4 -11 13 6 8 8
-    # 7 12 5 3 9 54
-    # -6 9 -17 13 7 -16
-    # -17 -7 -30 30 -14 -86
-    
+if __name__ == "__main__":    
     try:
         data = load_matrix("input.txt")
         solve_all_bases(data)

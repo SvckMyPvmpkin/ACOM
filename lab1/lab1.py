@@ -169,3 +169,4 @@ if __name__ == "__main__":
         print("Создайте файл input.txt!")
     except Exception as e:
         print(f"Произошла ошибка: {e}")
+        
