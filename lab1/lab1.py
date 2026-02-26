@@ -163,7 +163,7 @@ def solve_jordan_gauss(matrix):
 
 if __name__ == "__main__":
     try:
-        data = load_matrix("input.txt")
+        data = load_matrix("mnozh.txt")
         solve_jordan_gauss(data)
     except FileNotFoundError:
         print("Создайте файл input.txt!")
