@@ -86,7 +86,7 @@ def get_basic_solution(original_matrix, basis_indices):
         for r in range(step, m):
             if matrix[r][col_idx].num != 0:
                 pivot_row = r
-                break
+                break 
         
         if pivot_row == -1:
             return None # Эти столбцы зависимы
